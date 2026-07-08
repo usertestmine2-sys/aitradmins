@@ -1,0 +1,19 @@
+
+# Production/Deployment
+.env
+.env*.local
+vercel.json
+render.yaml
+AITradeMinds_v1.0.0.zip
+AITradeMinds_v1.0.0/
+MANIFEST.txt
+
+# Build artifacts
+.next/
+node_modules/
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Supabase local dev
+supabase/.branches/
+supabase/.temp/
