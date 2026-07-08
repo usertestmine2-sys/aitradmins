@@ -14,10 +14,7 @@ const NAV = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  // const { user, logout, loading } = useAuth();
-  const user = null;
-  const logout = () => {};
-  const loading = false;
+  const { user, logout, loading } = useAuth();
   const pathname = usePathname();
   const onAuthPage = pathname === "/login" || pathname === "/register";
 

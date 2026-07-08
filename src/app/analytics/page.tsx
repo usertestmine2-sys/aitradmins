@@ -46,12 +46,19 @@ function Pending({ note }: { note?: string }) {
 }
 
 export default function AnalyticsPage() {
-  const { user, loading: authLoading } = useAuth();
+  // Use a state to track client-side rendering
+  const [isClient, setIsClient] = useState(false);
+  const auth = useAuth();
+  const { user, loading: authLoading } = auth;
   const [data, setData] = useState<DashboardData | null>(null);
   const [tab, setTab] = useState<Tab>("Brain");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
   const load = useCallback(async () => {
     try {
       await api.post("/api/v1/market/bootstrap");
@@ -64,9 +71,11 @@ export default function AnalyticsPage() {
   }, []);
 
   useEffect(() => {
-    if (!authLoading && getToken()) void load();
-    else if (!authLoading) setLoading(false);
-  }, [authLoading, load]);
+    if (isClient && !authLoading && getToken()) void load();
+    else if (isClient && !authLoading) setLoading(false);
+  }, [isClient, authLoading, load]);
+
+  if (!isClient) return null; // Or a loading skeleton
 
   if (!authLoading && !user) {
     return (

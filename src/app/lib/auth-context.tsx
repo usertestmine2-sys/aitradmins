@@ -88,6 +88,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useAuth(): AuthState {
+  // Check if we're in a browser environment to safely use useContext
+  if (typeof window === 'undefined') {
+      return {
+        user: null,
+        loading: false,
+        login: async () => {},
+        register: async () => {},
+        logout: async () => {},
+        refresh: async () => {},
+      } as AuthState;
+  }
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;

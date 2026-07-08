@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
-import dynamic from "next/dynamic";
-const ClientLayoutWrapper = dynamic(() => import("./lib/auth-context").then(m => m.ClientLayoutWrapper), { ssr: false });
+import { ClientLayoutWrapper } from "./lib/auth-context";
 
 export const dynamic = "force-dynamic";
 
