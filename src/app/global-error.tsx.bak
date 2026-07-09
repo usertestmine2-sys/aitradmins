@@ -1,0 +1,33 @@
+"use client";
+
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  return (
+    <html lang="en">
+      <body className="bg-slate-950">
+        <div className="flex min-h-screen flex-col items-center justify-center p-6 text-center text-white">
+          <h2 className="text-2xl font-bold text-red-400">System Critical Error</h2>
+          <p className="mt-4 max-w-md text-slate-400">
+            A fatal error occurred in the AITradeMinds Operating System kernel.
+            The platform has been halted for safety.
+          </p>
+          <div className="mt-6 rounded border border-slate-800 bg-slate-900 p-4 text-left font-mono text-xs text-slate-500">
+            {error.message || "Unknown error"}
+            {error.digest && <div className="mt-1 text-slate-600">Digest: {error.digest}</div>}
+          </div>
+          <button
+            onClick={() => reset()}
+            className="mt-8 rounded-lg bg-indigo-600 px-6 py-2 font-semibold text-white hover:bg-indigo-500"
+          >
+            Reboot Kernel
+          </button>
+        </div>
+      </body>
+    </html>
+  );
+}

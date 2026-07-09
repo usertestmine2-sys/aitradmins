@@ -18,6 +18,7 @@ import {
   serial,
   date
 } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 
 export type RtJob = typeof rtJobs.$inferSelect;
@@ -677,6 +678,13 @@ export const usrUsers = pgTable(
 export type UsrUsers = typeof usrUsers.$inferSelect;
 export type NewUsrUsers = typeof usrUsers.$inferInsert;
 
+export const usrUsersRelations = relations(usrUsers, ({ many }) => ({
+  memberships: many(orgMembers),
+  accounts: many(tradeAccounts),
+  sessions: many(authSessions),
+  apiKeys: many(apikeyKeys),
+}));
+
 export const orgOrgs = pgTable(
   "org_orgs",
   {
@@ -696,6 +704,10 @@ export const orgOrgs = pgTable(
 export type OrgOrgs = typeof orgOrgs.$inferSelect;
 export type NewOrgOrgs = typeof orgOrgs.$inferInsert;
 
+export const orgOrgsRelations = relations(orgOrgs, ({ many }) => ({
+  members: many(orgMembers),
+}));
+
 export const orgMembers = pgTable(
   "org_members",
   {
@@ -711,6 +723,17 @@ export const orgMembers = pgTable(
 
 export type OrgMembers = typeof orgMembers.$inferSelect;
 export type NewOrgMembers = typeof orgMembers.$inferInsert;
+
+export const orgMembersRelations = relations(orgMembers, ({ one }) => ({
+  org: one(orgOrgs, {
+    fields: [orgMembers.orgId],
+    references: [orgOrgs.id],
+  }),
+  user: one(usrUsers, {
+    fields: [orgMembers.userId],
+    references: [usrUsers.id],
+  }),
+}));
 
 export const authSessions = pgTable(
   "auth_sessions",
@@ -1025,7 +1048,7 @@ export const tradeAccounts = pgTable(
   "trade_accounts",
   {
     id: serial("id").primaryKey(),
-    userId: integer("user_id").notNull(),
+    userId: integer("user_id").notNull().references(() => usrUsers.id),
     kind: text("kind").default("PAPER").notNull(), // PAPER | LIVE (live later)
     currency: text("currency").default("INR").notNull(),
     startingBalance: doublePrecision("starting_balance").default(1000000).notNull(),
@@ -1042,11 +1065,23 @@ export const tradeAccounts = pgTable(
 export type TradeAccounts = typeof tradeAccounts.$inferSelect;
 export type NewTradeAccounts = typeof tradeAccounts.$inferInsert;
 
+export const tradeAccountsRelations = relations(tradeAccounts, ({ one, many }) => ({
+  user: one(usrUsers, {
+    fields: [tradeAccounts.userId],
+    references: [usrUsers.id],
+  }),
+  orders: many(tradeOrders),
+  positions: many(tradePositions),
+  fills: many(tradeFills),
+  ledger: many(pfLedger),
+  snapshots: many(pfSnapshots),
+}));
+
 export const tradeOrders = pgTable(
   "trade_orders",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    accountId: integer("account_id").notNull(),
+    accountId: integer("account_id").notNull().references(() => tradeAccounts.id),
     symbol: text("symbol").notNull(),
     exchange: text("exchange").default("NSE").notNull(),
     side: text("side").notNull(), // BUY | SELL
@@ -1071,11 +1106,20 @@ export const tradeOrders = pgTable(
 export type TradeOrders = typeof tradeOrders.$inferSelect;
 export type NewTradeOrders = typeof tradeOrders.$inferInsert;
 
+export const tradeOrdersRelations = relations(tradeOrders, ({ one, many }) => ({
+  account: one(tradeAccounts, {
+    fields: [tradeOrders.accountId],
+    references: [tradeAccounts.id],
+  }),
+  events: many(tradeOrderEvents),
+  fills: many(tradeFills),
+}));
+
 export const tradeOrderEvents = pgTable(
   "trade_order_events",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    orderId: bigint("order_id", { mode: "number" }).notNull(),
+    orderId: bigint("order_id", { mode: "number" }).notNull().references(() => tradeOrders.id),
     fromStatus: text("from_status"),
     toStatus: text("to_status").notNull(),
     latencyMs: integer("latency_ms").default(0).notNull(),
@@ -1092,7 +1136,7 @@ export const tradePositions = pgTable(
   "trade_positions",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    accountId: integer("account_id").notNull(),
+    accountId: integer("account_id").notNull().references(() => tradeAccounts.id),
     symbol: text("symbol").notNull(),
     exchange: text("exchange").default("NSE").notNull(),
     product: text("product").default("INTRADAY").notNull(),
@@ -1115,8 +1159,8 @@ export const tradeFills = pgTable(
   "trade_fills",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    orderId: bigint("order_id", { mode: "number" }).notNull(),
-    accountId: integer("account_id").notNull(),
+    orderId: bigint("order_id", { mode: "number" }).notNull().references(() => tradeOrders.id),
+    accountId: integer("account_id").notNull().references(() => tradeAccounts.id),
     symbol: text("symbol").notNull(),
     side: text("side").notNull(),
     quantity: integer("quantity").notNull(),
@@ -1133,11 +1177,22 @@ export const tradeFills = pgTable(
 export type TradeFills = typeof tradeFills.$inferSelect;
 export type NewTradeFills = typeof tradeFills.$inferInsert;
 
+export const tradeFillsRelations = relations(tradeFills, ({ one }) => ({
+  order: one(tradeOrders, {
+    fields: [tradeFills.orderId],
+    references: [tradeOrders.id],
+  }),
+  account: one(tradeAccounts, {
+    fields: [tradeFills.accountId],
+    references: [tradeAccounts.id],
+  }),
+}));
+
 export const tradeRiskDecisions = pgTable(
   "trade_risk_decisions",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    accountId: integer("account_id").notNull(),
+    accountId: integer("account_id").notNull().references(() => tradeAccounts.id),
     symbol: text("symbol").notNull(),
     decision: text("decision").notNull(), // APPROVED | REJECTED
     rulesPassed: jsonb("rules_passed").$type<string[]>().default([]).notNull(),
@@ -1214,7 +1269,7 @@ export const pfiAllocations = pgTable(
   "pfi_allocations",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    accountId: integer("account_id").notNull(),
+    accountId: integer("account_id").notNull().references(() => tradeAccounts.id),
     optimizer: text("optimizer").notNull(), // MEAN_VARIANCE|RISK_PARITY|MAX_SHARPE|MIN_VARIANCE|EQUAL_WEIGHT
     regime: text("regime").notNull(),
     targets: jsonb("targets").$type<unknown>().notNull(),
@@ -1235,7 +1290,7 @@ export const pfiRebalances = pgTable(
   "pfi_rebalances",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    accountId: integer("account_id").notNull(),
+    accountId: integer("account_id").notNull().references(() => tradeAccounts.id),
     reason: text("reason").notNull(),
     actions: jsonb("actions").$type<unknown>().notNull(),
     status: text("status").default("RECOMMENDED").notNull(), // RECOMMENDED (never auto-exec)
@@ -1252,7 +1307,7 @@ export const pfiRiskBudgets = pgTable(
   "pfi_risk_budgets",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    accountId: integer("account_id").notNull(),
+    accountId: integer("account_id").notNull().references(() => tradeAccounts.id),
     var95: doublePrecision("var_95").default(0).notNull(),
     cvar95: doublePrecision("cvar_95").default(0).notNull(),
     portfolioBeta: doublePrecision("portfolio_beta").default(0).notNull(),
@@ -1271,7 +1326,7 @@ export const pfLedger = pgTable(
   "pf_ledger",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    accountId: integer("account_id").notNull(),
+    accountId: integer("account_id").notNull().references(() => tradeAccounts.id),
     entryType: text("entry_type").notNull(), // TRADE|FEE|TAX|CHARGE|DIVIDEND|BONUS|SPLIT|RIGHTS|INTEREST|MARGIN|SETTLEMENT|DEPOSIT
     account: text("account").notNull(), // CASH|POSITION|PNL|FEES|TAX
     direction: text("direction").notNull(), // DEBIT|CREDIT
@@ -1294,7 +1349,7 @@ export const pfSnapshots = pgTable(
   "pf_snapshots",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    accountId: integer("account_id").notNull(),
+    accountId: integer("account_id").notNull().references(() => tradeAccounts.id),
     equity: doublePrecision("equity").notNull(),
     cash: doublePrecision("cash").notNull(),
     investedValue: doublePrecision("invested_value").notNull(),
@@ -1377,9 +1432,9 @@ export const executionQuality = pgTable(
   "execution_quality",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    accountId: integer("account_id").notNull(),
-    orderId: bigint("order_id", { mode: "number" }).notNull(),
-    fillId: bigint("fill_id", { mode: "number" }).notNull(),
+    accountId: integer("account_id").notNull().references(() => tradeAccounts.id),
+    orderId: bigint("order_id", { mode: "number" }).notNull().references(() => tradeOrders.id),
+    fillId: bigint("fill_id", { mode: "number" }).notNull().references(() => tradeFills.id),
     symbol: text("symbol").notNull(),
     side: text("side").notNull(),
     expectedPrice: doublePrecision("expected_price").notNull(),
@@ -1406,8 +1461,8 @@ export const executionJournal = pgTable(
   "execution_journal",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    accountId: integer("account_id").notNull(),
-    orderId: bigint("order_id", { mode: "number" }),
+    accountId: integer("account_id").notNull().references(() => tradeAccounts.id),
+    orderId: bigint("order_id", { mode: "number" }).references(() => tradeOrders.id),
     symbol: text("symbol"),
     stage: text("stage").notNull(), // SIGNAL|CONSENSUS|RMS|OMS|PENDING|FILLED|POSITION|EXIT|LEARNING
     event: text("event").notNull(),
@@ -1426,8 +1481,8 @@ export const executionTimeline = pgTable(
   "execution_timeline",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    orderId: bigint("order_id", { mode: "number" }).notNull(),
-    accountId: integer("account_id").notNull(),
+    orderId: bigint("order_id", { mode: "number" }).notNull().references(() => tradeOrders.id),
+    accountId: integer("account_id").notNull().references(() => tradeAccounts.id),
     symbol: text("symbol").notNull(),
     stages: jsonb("stages").$type<unknown>().notNull(),
     finalStatus: text("final_status").notNull(),
@@ -1445,8 +1500,8 @@ export const executionReplay = pgTable(
   "execution_replay",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    orderId: bigint("order_id", { mode: "number" }).notNull(),
-    accountId: integer("account_id").notNull(),
+    orderId: bigint("order_id", { mode: "number" }).notNull().references(() => tradeOrders.id),
+    accountId: integer("account_id").notNull().references(() => tradeAccounts.id),
     symbol: text("symbol").notNull(),
     steps: jsonb("steps").$type<unknown>().notNull(),
     outcome: jsonb("outcome").$type<Record<string, unknown>>().default({}).notNull(),

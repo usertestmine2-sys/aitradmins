@@ -3,7 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { execOrders, execPortfolios, execPositions, marketBars } from "@/db/schema";
 import { appendEvent } from "@/lib/events/audit-store";
-import { getEventBus } from "@/lib/events/bus";
+import { eventBus } from "@/modules/market_data/core/event-bus";
 import { evaluateGates, readControlPlaneGates } from "@/lib/control-plane/reader";
 import { registerComponent } from "@/lib/ops/registry";
 import type {
@@ -76,7 +76,7 @@ export function ensureExecutionEngineStarted(): void {
   state.started = true;
 
   // Consume ONLY decision.approved from the Event Backbone.
-  getEventBus().subscribe((event) => {
+  eventBus.subscribe("platform", (event) => {
     if (event.type !== "decision.approved") return;
     const decision = parseDecision(event.payload ?? {});
     if (!decision) return; // malformed payloads are ignored; the publisher validates

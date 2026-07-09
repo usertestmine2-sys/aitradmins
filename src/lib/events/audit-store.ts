@@ -1,7 +1,7 @@
 import { and, desc, eq, lt, notInArray } from "drizzle-orm";
 import { db } from "@/db";
 import { opsEvents } from "@/db/schema";
-import { getEventBus } from "@/lib/events/bus";
+import { eventBus } from "@/modules/market_data/core/event-bus";
 import { isHealthStatus, type EventDTO, type HealthStatus, type SystemEventType } from "@/lib/ops/types";
 
 /**
@@ -19,7 +19,8 @@ export async function appendEvent(
   componentId: string | null,
   payload: Record<string, unknown>,
 ): Promise<void> {
-  getEventBus().publish(type, componentId, payload);
+  const at = new Date().toISOString();
+  eventBus.publish("platform", { type, componentId, payload, at });
   await db.insert(opsEvents).values({ type, componentId, payload });
 }
 

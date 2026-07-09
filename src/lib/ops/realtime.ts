@@ -1,4 +1,4 @@
-import { getEventBus } from "@/lib/events/bus";
+import { eventBus } from "@/modules/market_data/core/event-bus";
 import type { SystemEvent } from "@/lib/ops/types";
 
 /**
@@ -27,7 +27,7 @@ class RealtimeHub {
   private keepAlive: NodeJS.Timeout | null = null;
 
   constructor() {
-    getEventBus().subscribe((event) => this.broadcast(event));
+    eventBus.subscribe("platform", (event) => this.broadcast(event));
   }
 
   addClient(send: (chunk: string) => void): number {

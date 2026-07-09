@@ -1,5 +1,5 @@
-import { getEventBus } from "@/lib/events/bus";
 import { appendEvent, getLatestHeartbeats, type HeartbeatView } from "@/lib/events/audit-store";
+import { eventBus } from "@/modules/market_data/core/event-bus";
 import {
   collectProcessMetrics,
   probeControlPlane,
@@ -160,11 +160,15 @@ export async function runSweep(): Promise<void> {
     // Datastore down: nothing can be persisted; broadcast the condition live.
     state.lastSweepAt = now.toISOString();
     state.lastSweepDurationMs = performance.now() - startedAt;
-    getEventBus().publish("system.error", "database", {
-      title: "Database unavailable",
-      message: dbProbe.error ?? "PostgreSQL probe failed",
+    eventBus.publish("system", {
+      type: "system.error",
+      componentId: "database",
+      payload: {
+        title: "Database unavailable",
+        message: dbProbe.error ?? "PostgreSQL probe failed",
+      },
+      at: now.toISOString(),
     });
-    getEventBus().publish("ops.sweep.completed", null, { databaseOk: false });
     return;
   }
 
@@ -180,7 +184,7 @@ export async function runSweep(): Promise<void> {
 
   const proc = collectProcessMetrics();
   const loopLag = sampleEventLoopLag();
-  const busStats = getEventBus().stats();
+  const busStats = eventBus.stats();
   const sseStats = getRealtimeHub().stats();
 
   const busDroppedDelta = Math.max(0, busStats.dropped - state.lastBusDropped);

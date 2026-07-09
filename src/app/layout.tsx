@@ -3,8 +3,6 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import { ClientLayoutWrapper } from "./lib/auth-context";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
   title: "AITradeMinds — AI Trading OS",
   description: "Institutional-grade AI Trading Operating System.",

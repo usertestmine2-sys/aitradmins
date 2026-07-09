@@ -3,6 +3,8 @@
 import { EventEmitter } from "node:events";
 import type { ProviderName, Timeframe } from "../constants";
 
+import { SystemEventType } from "@/lib/ops/types";
+
 export interface TickEvent {
   symbol: string;
   exchange: string;
@@ -69,6 +71,25 @@ export interface MarketDataEventMap {
     version?: number;
     message?: string;
     ts: number;
+  };
+  // System & Operations signals (Consolidated from lib/events/bus)
+  system: {
+    type: SystemEventType;
+    componentId?: string | null;
+    payload: Record<string, unknown>;
+    at: string;
+  };
+  ops: {
+    type: string; // ops.sweep.completed | ops.component.registered | ...
+    componentId?: string | null;
+    payload: Record<string, unknown>;
+    at: string;
+  };
+  platform: {
+    type: SystemEventType;
+    componentId?: string | null;
+    payload?: Record<string, unknown>;
+    at: string;
   };
   // Trading signals (Phase 7) — portfolio/order/position/risk/execution.
   trading: {
@@ -138,6 +159,15 @@ class MarketDataEventBus {
 
   metrics(): Record<string, number> {
     return Object.fromEntries(this.counters.entries());
+  }
+
+  stats() {
+    return {
+      published: [...this.counters.values()].reduce((a, b) => a + b, 0),
+      delivered: [...this.counters.values()].reduce((a, b) => a + b, 0), // best effort
+      dropped: 0,
+      subscribers: this.emitter.eventNames().length,
+    };
   }
 }
 

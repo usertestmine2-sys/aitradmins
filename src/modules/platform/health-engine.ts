@@ -74,10 +74,11 @@ class HealthEngine {
       subsystems,
       platformScore,
     });
-    eventBus.publish("training", {
-      event: "platform.health.updated",
-      message: `overall ${overallScore} (${health.grade})`,
-      ts: Date.now(),
+    eventBus.publish("system", {
+      type: "system.health.updated",
+      componentId: "platform.health",
+      payload: { score: overallScore, grade: health.grade },
+      at: new Date().toISOString(),
     });
     return health;
   }

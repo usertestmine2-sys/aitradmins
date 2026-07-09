@@ -3,7 +3,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { api, clearToken, getToken, setToken } from "./api-client";
-import dynamic from "next/dynamic";
+import { AppShell } from "@/components/AppShell";
 
 export interface SessionUser {
   id: number;
@@ -22,7 +22,14 @@ interface AuthState {
   refresh: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthState | undefined>(undefined);
+const AuthContext = createContext<AuthState>({
+  user: null,
+  loading: true,
+  login: async () => {},
+  register: async () => {},
+  logout: async () => {},
+  refresh: async () => {},
+});
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -88,31 +95,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useAuth(): AuthState {
-  // Check if we're in a browser environment to safely use useContext
-  if (typeof window === 'undefined') {
-      return {
-        user: null,
-        loading: false,
-        login: async () => {},
-        register: async () => {},
-        logout: async () => {},
-        refresh: async () => {},
-      } as AuthState;
-  }
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  return useContext(AuthContext);
 }
-
-const SafeAppShell = dynamic(
-  () => import("@/components/AppShell").then((m) => m.AppShell),
-  { ssr: false }
-);
 
 export function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <SafeAppShell>{children}</SafeAppShell>
+      <AppShell>{children}</AppShell>
     </AuthProvider>
   );
 }
